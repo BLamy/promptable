@@ -1,12 +1,10 @@
-import { ExtractVariableNames, ExtractFormatObject } from '@utils/type-utils';
+import { ExtractFormatObject } from '@utils/type-utils';
 
 export function injectVariables<T extends string>(
   template: T,
   variables: ExtractFormatObject<T>
-): string {
-  let result: string = template;
-  for (const key of Object.keys(variables) as ExtractVariableNames<T>) {
-    result = result.replaceAll(`{{${key}}}`, variables[key] as string);
-  }
-  return result;
+) {
+  return Object.entries(variables).reduce((acc, [key, value]) => {
+    return acc.replaceAll(`{{${key}}}`, value as string)
+  }, template as string)
 }
