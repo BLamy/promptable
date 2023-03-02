@@ -35,9 +35,7 @@ export default async function handler(
   // then add the user message
   chatHistory.addUserMessage(userInput);
 
-  const chatbotPrompt = promptable.prompts.chatbot();
-
-  const promptText = chatbotPrompt.format({
+  const { text: promptText } = promptable.promptTemplates.Chatbot.build({
     memory: chatHistory.get(),
     userInput,
   });

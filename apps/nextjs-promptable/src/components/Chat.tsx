@@ -1,3 +1,5 @@
+"use client"
+
 import classNames from "classnames";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -18,19 +20,14 @@ export const scrollToBottom = (element: HTMLElement) => {
   });
 };
 
-interface Message {
-  isUserMessage: boolean;
-  text: string;
-  id: string;
-}
-
-const createMessage = (text: string, isUserMessage: boolean): Message => {
+const createMessage = (text: string, isUserMessage: boolean) => {
   return {
     isUserMessage,
     text,
     id: uuid(),
   };
 };
+type Message = ReturnType<typeof createMessage>
 
 export default function Chat() {
   // ref to track text area and scroll text into view
@@ -81,7 +78,65 @@ export default function Chat() {
 
     // streaming
     if (streaming) {
-      await stream(input);
+        const response = await fetch("/api/stream", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prevMessages: messages,
+            userInput: input,
+          }),
+        });
+    
+        if (!response.ok) {
+          throw new Error(response.statusText);
+        }
+    
+        // This data is a ReadableStream
+        const data = response.body;
+        if (!data) {
+          return;
+        }
+    
+        const reader = data.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+    
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          const chunkValue = decoder.decode(value);
+    
+          const jsn = chunkValue.slice(6, chunkValue.length - 1).trim();
+    
+          if (jsn === "[DONE]") {
+            break;
+          }
+    
+          try {
+            const data = JSON.parse(jsn);
+            console.log(data);
+    
+            const text = data.choices[0].text;
+    
+            setMessages((prevMessages) => {
+              const last =
+                prevMessages[prevMessages.length - 1] || createMessage("", false);
+              return [
+                ...prevMessages.slice(0, -1),
+                { ...last, text: last.text + text },
+              ];
+            });
+    
+            handleScroll();
+          } catch (e) {
+            console.log(chunkValue);
+            console.log(jsn);
+            console.log(e);
+          }
+        }
+
       return;
     }
 
@@ -121,66 +176,7 @@ export default function Chat() {
     });
   };
 
-  const stream = async (input: string) => {
-    const response = await fetch("/api/stream", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prevMessages: messages,
-        userInput: input,
-      }),
-    });
 
-    if (!response.ok) {
-      throw new Error(response.statusText);
-    }
-
-    // This data is a ReadableStream
-    const data = response.body;
-    if (!data) {
-      return;
-    }
-
-    const reader = data.getReader();
-    const decoder = new TextDecoder();
-    let done = false;
-
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunkValue = decoder.decode(value);
-
-      const jsn = chunkValue.slice(6, chunkValue.length - 1).trim();
-
-      if (jsn === "[DONE]") {
-        break;
-      }
-
-      try {
-        const data = JSON.parse(jsn);
-        console.log(data);
-
-        const text = data.choices[0].text;
-
-        setMessages((prevMessages) => {
-          const last =
-            prevMessages[prevMessages.length - 1] || createMessage("", false);
-          return [
-            ...prevMessages.slice(0, -1),
-            { ...last, text: last.text + text },
-          ];
-        });
-
-        handleScroll();
-      } catch (e) {
-        console.log(chunkValue);
-        console.log(jsn);
-        console.log(e);
-      }
-    }
-  };
 
   return (
     <div className="flex h-[100vh] flex-grow flex-col justify-between">
