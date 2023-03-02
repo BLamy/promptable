@@ -1,6 +1,6 @@
-import { Memory } from "src/memories/index";
+import { MemoryBase } from "./MemoryBase";
 
-export class BufferedChatMemory implements Memory {
+export class BufferedChatMemory implements MemoryBase {
   botMessages: string[] = [];
   userMessages: string[] = [];
 
@@ -13,7 +13,7 @@ export class BufferedChatMemory implements Memory {
     protected botName = "Assistant",
     protected userName = "User",
     protected startingSpeaker: "user" | "bot" = "user",
-    protected maxInteractionTurns = Infinity
+    protected maxInteractionTurns = Infinity,
   ) {}
 
   /**

@@ -56,6 +56,13 @@ export class Prompt<T extends string, V extends PromptVariables<T>> {
     );
   }
 
+  /**
+   * @deprecated This method should not be used use .text instead
+   */
+  format(variables: V) {
+    return injectVariables(this.template.text, variables);
+  }
+
   get text() {
     return injectVariables(this.template.text, this.variables || {});
   }
